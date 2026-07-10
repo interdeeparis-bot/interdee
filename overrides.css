@@ -26,6 +26,6 @@ body[data-theme="rose"]{--orange:#c65570;--yellow:#f0c9cf;--green:#59424c}
 @media(max-width:1100px){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-visual.custom-photo,.hero-visual.custom-video{height:480px;max-height:480px}}
 @media(max-width:600px){.product-grid{grid-template-columns:1fr}.hero h1{font-size:48px}.notice{line-height:1.4;padding-left:16px;padding-right:16px}.hero-visual.custom-photo,.hero-visual.custom-video{height:360px;max-height:360px}}
 
-/* Public catalogue: ordering is intentionally disabled until a cloud backend is connected. */
-.cart-button,.reserve-button{display:none!important}
+/* Ordering appears automatically after the cloud database is configured. */
+body:not(.cloud-ready) .cart-button,body:not(.cloud-ready) .reserve-button{display:none!important}
 #phoneLink{display:none!important}
