@@ -19,5 +19,5 @@
   </div>
   <dialog id="productDialog" class="online-dialog"><button class="close" id="closeProduct">×</button><form id="productForm"><h2 id="productDialogTitle">编辑商品</h2><div class="form-grid"><label>款号<input name="id" required></label><label>显示名称<input name="name" required></label><label>品类<select name="category"></select></label><label>成分<input name="composition"></label><label>原价 €<input name="original" type="number" min="0" step="0.01" required></label><label>折后价 €<input name="price" type="number" min="0" step="0.01" required></label><label>主商品图<input name="photo" type="file" accept="image/*"></label><label class="check"><input name="visible" type="checkbox" checked> 前台显示</label></div><div class="variant-head"><h3>颜色、尺码与库存</h3><button type="button" class="secondary" id="addColor">＋ 添加颜色</button></div><div id="variantRows"></div><button class="primary" type="submit">保存商品</button></form></dialog>
   <div class="toast" id="onlineToast" hidden></div>
-  <script src="supabase-config.js"></script><script src="cloud-api.js"></script><script src="admin-online.js"></script>
+<script src="supabase-config.js?v=20260710-1"></script><script src="cloud-api.js"></script><script src="admin-online.js"></script>
 </body></html>
