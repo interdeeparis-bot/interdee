@@ -16,7 +16,7 @@
   function toRow(product){return {id:String(product.id),name:product.name||String(product.id),category:product.category||'autres',label:product.label||'',composition:product.composition||'',price:Number(product.price)||0,original:Number(product.original)||0,discount_rate:Number(product.discountRate)||0,stock:Number(product.stock)||0,variants:product.variants||[],image:product.image||'',color_images:product.colorImages||{},icon:product.icon||'✦',color:product.color||'#b78166',description:product.desc||'',visible:product.visible!==false,display_order:Number(product.order)||0}}
   async function loadProducts(admin=false){const rows=await request(`/rest/v1/products?select=*&order=display_order.asc${admin?'':'&visible=eq.true'}`,{admin});return (rows||[]).map(fromRow)}
   async function loadSettings(admin=false){const rows=await request('/rest/v1/site_settings?select=data&id=eq.site',{admin});return rows?.[0]?.data||{}}
-  async function submitOrder(customer,items,total){return request('/rest/v1/orders',{method:'POST',body:{customer,items,total:Number(total)||0,status:'new'},prefer:'return=representation'})}
+  async function submitOrder(customer,items,total){return request('/rest/v1/orders',{method:'POST',body:{customer,items,total:Number(total)||0,status:'new'},prefer:'return=minimal'})}
   async function login(email,password){const result=await request('/auth/v1/token?grant_type=password',{method:'POST',body:{email,password}});if(!result?.access_token)throw new Error('登录失败');sessionStorage.setItem(tokenKey,result.access_token);return result}
   function logout(){sessionStorage.removeItem(tokenKey)}
   async function verifyAdmin(){return request('/rest/v1/admin_users?select=user_id&limit=1',{admin:true})}
