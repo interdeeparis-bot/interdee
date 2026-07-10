@@ -42,6 +42,8 @@ async function applyHeroMedia(){
   heroVisual.classList.remove('custom-photo','custom-video');heroVisual.style.backgroundImage='';
   if(type==='image'){heroVisual.classList.add('custom-photo');heroVisual.style.backgroundImage=`url("${heroImage}")`;return}
   if(type==='video'){
+    const staticVideo=String(settings.heroVideo||'');
+    if(/^assets\/[a-z0-9_./-]+$/i.test(staticVideo)||/^https:\/\/[a-z0-9.-]+\/storage\/v1\/object\/public\/product-media\/[a-z0-9_./%-]+$/i.test(staticVideo)){video.src=staticVideo;video.poster='assets/hero-poster.png';video.hidden=false;video.muted=true;heroVisual.classList.add('custom-video');video.play().catch(()=>{});return}
     try{const blob=await MediaStore.get('hero-video');if(request!==heroMediaRequest)return;if(blob){heroVideoObjectUrl=URL.createObjectURL(blob);video.src=heroVideoObjectUrl;video.hidden=false;video.muted=true;heroVisual.classList.add('custom-video');video.play().catch(()=>{});return}}catch(_){}
   }
 }
@@ -109,7 +111,7 @@ variantDialog.addEventListener('click',event=>{if(event.target===variantDialog)v
 categoryFilters.addEventListener('click',event=>{const button=event.target.closest('.filter');if(!button)return;activeFilter=button.dataset.filter;render()});
 
 function showDialog(){
-  products=StoreData.getProducts();products.forEach(syncProductStock);updateCount();document.querySelector('#successMessage').hidden=true;document.querySelector('#reserveContent').hidden=false;
+  if(!window.CloudAPI?.configured)products=StoreData.getProducts();products.forEach(syncProductStock);updateCount();document.querySelector('#successMessage').hidden=true;document.querySelector('#reserveContent').hidden=false;
   const box=document.querySelector('#reserveItems');
   box.innerHTML=reserved.length?reserved.map((selection,index)=>{const product=products.find(p=>p.id===selection.id);const option=selection.color||selection.size?` · ${esc(selection.color)} ${esc(selection.size)}`:'';return `<div class="reserve-line"><span>${esc(product.name)}${option} · ${money.format(Number(product.price))}</span><button class="remove-item" data-index="${index}">Retirer</button></div>`}).join(''):'<div class="empty">Votre sélection est vide.</div>';
   if(!dialog.open)dialog.showModal();
@@ -117,15 +119,24 @@ function showDialog(){
 document.querySelector('#openReserve').addEventListener('click',showDialog);
 document.querySelector('#closeDialog').addEventListener('click',()=>dialog.close());
 document.querySelector('#reserveItems').addEventListener('click',event=>{if(event.target.matches('.remove-item')){reserved.splice(Number(event.target.dataset.index),1);updateCount();render();showDialog()}});
-document.querySelector('#reserveForm').addEventListener('submit',event=>{
+document.querySelector('#reserveForm').addEventListener('submit',async event=>{
   event.preventDefault();if(!reserved.length){dialog.close();document.querySelector('#deals').scrollIntoView();return}
-  const form=Object.fromEntries(new FormData(event.target));const fresh=StoreData.getProducts();fresh.forEach(syncProductStock);
+  const form=Object.fromEntries(new FormData(event.target));const fresh=window.CloudAPI?.configured?products:StoreData.getProducts();fresh.forEach(syncProductStock);
   const selected=reserved.map(selection=>{const product=fresh.find(p=>p.id===selection.id);if(!product)return null;const variant=product.variants?.find(v=>v.color===selection.color&&v.size===selection.size);if(product.variants?.length&&(!variant||variant.quantity<1))return null;if(!product.variants?.length&&product.stock<1)return null;return {id:product.id,name:product.name,price:product.price,color:selection.color||'',size:selection.size||''}}).filter(Boolean);
   if(!selected.length){reserved=[];updateCount();dialog.close();render();return}
-  const reservations=StoreData.getReservations();reservations.unshift({id:'R'+Date.now(),createdAt:new Date().toISOString(),status:'new',customer:form,items:selected});StoreData.saveReservations(reservations);
+  const submitButton=event.target.querySelector('button[type="submit"]');submitButton.disabled=true;
+  try{
+    if(window.CloudAPI?.configured)await CloudAPI.submitOrder(form,selected);
+    else{const reservations=StoreData.getReservations();reservations.unshift({id:'R'+Date.now(),createdAt:new Date().toISOString(),status:'new',customer:form,items:selected});StoreData.saveReservations(reservations)}
+  }catch(error){alert('La demande n’a pas pu être envoyée. Merci de réessayer.');submitButton.disabled=false;return}
+  submitButton.disabled=false;
   document.querySelector('#reserveContent').hidden=true;document.querySelector('#successMessage').hidden=false;reserved=[];updateCount();render();event.target.reset();
 });
 document.querySelector('#doneButton').addEventListener('click',()=>dialog.close());
 dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
-window.addEventListener('storage',()=>{products=StoreData.getProducts();settings=StoreData.getSettings();applySettings();updateCount();render()});
-applySettings();updateCount();render();
+window.addEventListener('storage',()=>{if(window.CloudAPI?.configured)return;products=StoreData.getProducts();settings=StoreData.getSettings();applySettings();updateCount();render()});
+async function hydrateCloud(){
+  if(!window.CloudAPI?.configured)return;
+  try{const [cloudProducts,cloudSettings]=await Promise.all([CloudAPI.loadProducts(),CloudAPI.loadSettings()]);if(cloudProducts.length)products=cloudProducts;settings={...settings,...cloudSettings};document.body.classList.add('cloud-ready');applySettings();updateCount();render()}catch(error){console.error('Cloud catalog:',error)}
+}
+applySettings();updateCount();render();hydrateCloud();setInterval(hydrateCloud,30000);

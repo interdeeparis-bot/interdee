@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="INTERDEE PRIVATE COLLECTION — sélection de vêtements à prix privés, avec tailles et stocks disponibles." />
-  <title>INTERDEE PRIVATE COLLECTION</title>
+  <meta name="description" content="Le Bon Coin des Prix — produits du quotidien à prix réduit, réservation gratuite." />
+  <title>Le Bon Coin des Prix</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Accueil">
       <span class="brand-mark">B</span>
-      <span id="brandName">INTERDEE PRIVATE COLLECTION</span>
+      <span id="brandName">Le Bon Coin</span>
     </a>
     <nav aria-label="Navigation principale">
       <a href="#deals">Nos offres</a>
@@ -36,7 +36,7 @@
           <a class="primary-button" href="#deals"><span id="heroCta"></span> <b>↘</b></a>
           <a class="text-link" href="#how">Comment acheter →</a>
         </div>
-        <div class="trust-row"><span>✓ Prix transparents</span><span>✓ Tailles disponibles</span><span>✓ Stock actualisé</span></div>
+        <div class="trust-row"><span>✓ Prix transparents</span><span>✓ Réservation gratuite</span><span>✓ Aucun paiement en ligne</span></div>
       </div>
       <div class="hero-visual" aria-label="Les bonnes affaires de la semaine">
         <video class="hero-video" id="heroVideo" autoplay muted loop playsinline hidden aria-label="Vidéo de présentation"></video>
@@ -56,11 +56,11 @@
     </section>
 
     <section class="how-section" id="how">
-      <div class="how-intro"><p class="eyebrow">SIMPLE & RAPIDE</p><h2>Trouvez votre pièce.<br>Notez sa référence.</h2><p>Consultez librement les modèles, couleurs, tailles et quantités encore disponibles dans notre sélection privée.</p></div>
+      <div class="how-intro"><p class="eyebrow">SIMPLE & RAPIDE</p><h2>Un coup de cœur ?<br>On vous le garde.</h2><p>Pas de compte, pas de paiement en ligne. Envoyez votre demande et nous vous contacterons pour confirmer la disponibilité et le retrait.</p></div>
       <div class="steps">
-        <article><span>01</span><h3>Découvrez la sélection</h3><p>Filtrez les pièces par catégorie et consultez les prix privés.</p></article>
-        <article><span>02</span><h3>Vérifiez les options</h3><p>Consultez les couleurs, tailles et quantités encore en stock.</p></article>
-        <article><span>03</span><h3>Notez la référence</h3><p>Conservez le numéro de la pièce qui vous intéresse pour nous la demander.</p></article>
+        <article><span>01</span><h3>Découvrez les offres</h3><p>Consultez les réductions de la semaine et les stocks disponibles.</p></article>
+        <article><span>02</span><h3>Réservez gratuitement</h3><p>Choisissez vos articles et laissez-nous vos coordonnées.</p></article>
+        <article><span>03</span><h3>Confirmez l’achat</h3><p>Nous vous contactons pour convenir du retrait ou de la livraison.</p></article>
       </div>
     </section>
 
@@ -72,7 +72,7 @@
     </section>
   </main>
 
-  <footer><div class="brand footer-brand"><span class="brand-mark">B</span><span id="footerBrand">INTERDEE PRIVATE COLLECTION</span></div><p id="footerText">INTERDEE PRIVATE COLLECTION</p><p>© 2026</p></footer>
+  <footer><div class="brand footer-brand"><span class="brand-mark">B</span><span id="footerBrand">Le Bon Coin</span></div><p id="footerText">Les bons prix pour la vraie vie.</p><p>© 2026</p></footer>
 
   <dialog id="reserveDialog">
     <button class="close" id="closeDialog" aria-label="Fermer">×</button>
@@ -103,6 +103,8 @@
     <p class="variant-availability" id="variantAvailability"></p>
     <button class="primary-button submit-button" id="confirmVariant" type="button">Ajouter à ma sélection</button>
   </dialog>
+  <script src="supabase-config.js"></script>
+  <script src="cloud-api.js"></script>
   <script src="media-store.js"></script>
   <script src="store-data.js"></script>
   <script src="script.js"></script>
