@@ -80,6 +80,7 @@
       <p class="eyebrow">RÉSERVATION GRATUITE</p><h2>Votre sélection</h2>
       <p class="dialog-note">Aucun paiement en ligne. Nous vous contacterons pour confirmer les produits et le retrait.</p>
       <div id="reserveItems" class="reserve-items"></div>
+      <div id="reserveTotal" class="reserve-total" aria-live="polite">Total de la précommande : 0,00 €</div>
       <form id="reserveForm">
         <label>Votre nom<input required name="name" placeholder="Ex. Marie Dupont"></label>
         <label>Téléphone<input required name="phone" type="tel" placeholder="Votre numéro de téléphone" pattern="[0-9+\- .]{7,20}"></label>
@@ -99,14 +100,19 @@
     <div class="variant-selectors">
       <label>Couleur<select id="variantColor"></select></label>
       <label>Taille<select id="variantSize"></select></label>
+      <label>Quantité<input id="variantQuantity" type="number" min="1" step="1" value="1"></label>
     </div>
     <p class="variant-availability" id="variantAvailability"></p>
     <button class="primary-button submit-button" id="confirmVariant" type="button">Ajouter à ma sélection</button>
   </dialog>
+  <dialog id="imageDialog" class="image-dialog">
+    <button class="close" id="closeImage" aria-label="Fermer">×</button>
+    <img id="zoomedImage" alt="">
+  </dialog>
 <script src="supabase-config.js?v=20260710-1"></script>
-<script src="cloud-api.js?v=20260710-2"></script>
+<script src="cloud-api.js?v=20260710-3"></script>
   <script src="media-store.js"></script>
   <script src="store-data.js"></script>
-  <script src="script.js"></script>
+  <script src="script.js?v=20260710-3"></script>
 </body>
 </html>
