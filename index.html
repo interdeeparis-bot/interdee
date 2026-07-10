@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="INTERDEE PRIVATE COLLECTION — sélection de vêtements à prix privés, avec tailles et stocks disponibles." />
+  <title>INTERDEE PRIVATE COLLECTION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="overrides.css" />
+</head>
+<body>
+  <div class="notice" id="siteNotice"></div>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Accueil">
+      <span class="brand-mark">B</span>
+      <span id="brandName">INTERDEE PRIVATE COLLECTION</span>
+    </a>
+    <nav aria-label="Navigation principale">
+      <a href="#deals">Nos offres</a>
+      <a href="#how">Comment ça marche</a>
+      <a href="#contact">Nous contacter</a>
+    </nav>
+    <button class="cart-button" id="openReserve" type="button">Ma sélection <span id="cartCount">0</span></button>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow" id="heroEyebrow"></p>
+        <h1><span id="heroTitle"></span><br><em id="heroAccent"></em></h1>
+        <p class="hero-text" id="heroDescription"></p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#deals"><span id="heroCta"></span> <b>↘</b></a>
+          <a class="text-link" href="#how">Comment acheter →</a>
+        </div>
+        <div class="trust-row"><span>✓ Prix transparents</span><span>✓ Tailles disponibles</span><span>✓ Stock actualisé</span></div>
+      </div>
+      <div class="hero-visual" aria-label="Les bonnes affaires de la semaine">
+        <video class="hero-video" id="heroVideo" autoplay muted loop playsinline hidden aria-label="Vidéo de présentation"></video>
+        <div class="sun"></div>
+        <div class="hero-card card-a"><span>SÉLECTION DU QUOTIDIEN</span><strong>Jusqu’à<br><span id="maxSaving">– 50 %</span></strong></div>
+        <div class="hero-card card-b"><span>NOUVEAUTÉS</span><strong id="productTotal">6</strong><small>bons plans</small></div>
+        <div class="stamp">BON<br>PLAN<br><i>prix doux</i></div>
+      </div>
+    </section>
+
+    <section class="deals-section" id="deals">
+      <div class="section-heading">
+        <div><p class="eyebrow">NOUVEAUTÉS · CETTE SEMAINE</p><h2 id="sectionTitle">Les bons plans</h2></div>
+        <div class="filters" id="categoryFilters" role="group" aria-label="Filtrer les produits"><button class="filter active" data-filter="all">Tout</button></div>
+      </div>
+      <div class="product-grid" id="productGrid"></div>
+    </section>
+
+    <section class="how-section" id="how">
+      <div class="how-intro"><p class="eyebrow">SIMPLE & RAPIDE</p><h2>Trouvez votre pièce.<br>Notez sa référence.</h2><p>Consultez librement les modèles, couleurs, tailles et quantités encore disponibles dans notre sélection privée.</p></div>
+      <div class="steps">
+        <article><span>01</span><h3>Découvrez la sélection</h3><p>Filtrez les pièces par catégorie et consultez les prix privés.</p></article>
+        <article><span>02</span><h3>Vérifiez les options</h3><p>Consultez les couleurs, tailles et quantités encore en stock.</p></article>
+        <article><span>03</span><h3>Notez la référence</h3><p>Conservez le numéro de la pièce qui vous intéresse pour nous la demander.</p></article>
+      </div>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <p class="eyebrow">UNE QUESTION ?</p>
+      <h2 id="contactTitle">Vous cherchez autre chose ?<br>Parlez-nous-en.</h2>
+      <p>Nous surveillons les prochains arrivages et vous prévenons dès qu’une bonne affaire se présente.</p>
+      <a id="phoneLink" href="tel:+33123456789">Appelez-nous au <span id="phoneText">01 23 45 67 89</span></a>
+    </section>
+  </main>
+
+  <footer><div class="brand footer-brand"><span class="brand-mark">B</span><span id="footerBrand">INTERDEE PRIVATE COLLECTION</span></div><p id="footerText">INTERDEE PRIVATE COLLECTION</p><p>© 2026</p></footer>
+
+  <dialog id="reserveDialog">
+    <button class="close" id="closeDialog" aria-label="Fermer">×</button>
+    <div id="reserveContent">
+      <p class="eyebrow">RÉSERVATION GRATUITE</p><h2>Votre sélection</h2>
+      <p class="dialog-note">Aucun paiement en ligne. Nous vous contacterons pour confirmer les produits et le retrait.</p>
+      <div id="reserveItems" class="reserve-items"></div>
+      <form id="reserveForm">
+        <label>Votre nom<input required name="name" placeholder="Ex. Marie Dupont"></label>
+        <label>Téléphone<input required name="phone" type="tel" placeholder="Votre numéro de téléphone" pattern="[0-9+\- .]{7,20}"></label>
+        <label>E-mail (facultatif)<input name="email" type="email" placeholder="vous@exemple.fr"></label>
+        <label>Message (facultatif)<textarea name="note" placeholder="Créneau souhaité, question sur le retrait…"></textarea></label>
+        <p class="privacy-note">Ces informations servent uniquement à répondre à votre demande de réservation.</p>
+        <button class="primary-button submit-button" type="submit">Envoyer ma demande</button>
+      </form>
+    </div>
+    <div class="success" id="successMessage" hidden><span>✓</span><h2>Demande envoyée</h2><p>Merci ! Nous vous contacterons rapidement pour confirmer la disponibilité.</p><button class="primary-button" id="doneButton">Fermer</button></div>
+  </dialog>
+  <dialog id="variantDialog" class="variant-dialog">
+    <button class="close" id="closeVariant" aria-label="Fermer">×</button>
+    <p class="eyebrow">CHOISIR UNE OPTION</p>
+    <h2 id="variantProductName">Choisissez votre article</h2>
+    <p class="dialog-note">Sélectionnez la couleur et la taille avant de réserver.</p>
+    <div class="variant-selectors">
+      <label>Couleur<select id="variantColor"></select></label>
+      <label>Taille<select id="variantSize"></select></label>
+    </div>
+    <p class="variant-availability" id="variantAvailability"></p>
+    <button class="primary-button submit-button" id="confirmVariant" type="button">Ajouter à ma sélection</button>
+  </dialog>
+  <script src="media-store.js"></script>
+  <script src="store-data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
