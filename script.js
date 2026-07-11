@@ -135,7 +135,7 @@ document.querySelector('#reserveForm').addEventListener('submit',async event=>{
   try{
     const total=selected.reduce((sum,item)=>sum+Number(item.lineTotal||0),0);if(window.CloudAPI?.configured)await CloudAPI.submitOrder(form,selected,total);
     else{const reservations=StoreData.getReservations();reservations.unshift({id:'R'+Date.now(),createdAt:new Date().toISOString(),status:'new',customer:form,items:selected});StoreData.saveReservations(reservations)}
-  }catch(error){console.error('Order submission failed',error);alert('La demande n’a pas pu être envoyée. Merci de réessayer.');submitButton.disabled=false;return}
+  }catch(error){alert('La demande n’a pas pu être envoyée. Merci de réessayer.');submitButton.disabled=false;return}
   submitButton.disabled=false;
   document.querySelector('#reserveContent').hidden=true;document.querySelector('#successMessage').hidden=false;reserved=[];updateCount();render();event.target.reset();
 });
