@@ -6,10 +6,10 @@
   <link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="admin-overrides.css"><link rel="stylesheet" href="admin-online.css">
 </head>
 <body>
-  <section class="online-login" id="loginView">
+  <section class="online-login" id="loginView" hidden>
     <form class="login-card" id="loginForm"><p class="kicker">INTERDEE</p><h1>在线管理后台</h1><p>请使用管理员邮箱和密码登录。</p><label>邮箱<input name="email" type="email" required></label><label>密码<input name="password" type="password" required></label><button class="primary" type="submit">登录后台</button><p class="login-error" id="loginError"></p></form>
   </section>
-  <div class="admin-shell" id="onlineApp" hidden>
+  <div class="admin-shell" id="onlineApp">
     <aside class="sidebar"><div class="admin-brand"><span>好</span><div><strong>INTERDEE</strong><small>在线管理后台</small></div></div><nav><button class="active" data-view="catalogue">▦ 商品与库存</button><button data-view="layout">✦ 页面与排版</button><button data-view="orders">☷ 客户预留 <i id="newOrderBadge">0</i></button></nav><div class="sidebar-bottom"><a href="index.html" target="_blank">↗ 打开法语前台</a><button id="logoutButton">退出登录</button></div></aside>
     <main class="admin-main">
       <section class="admin-view active" id="view-catalogue"><div class="view-head"><div><p class="kicker">CATALOGUE</p><h1>商品与库存</h1><p>修改后立即同步到顾客网页。</p></div><button class="primary" id="addProduct">＋ 新增商品</button></div><div class="stats-grid" id="statsGrid"></div><div class="panel"><div class="panel-head"><h2>商品列表</h2><input id="productSearch" placeholder="搜索款号、品类或颜色"></div><div class="table-scroll"><table class="online-table"><thead><tr><th>商品</th><th>品类</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead><tbody id="productRows"></tbody></table></div></div></section>
