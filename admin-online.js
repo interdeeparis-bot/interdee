@@ -10,7 +10,12 @@ function toast(message){const el=$('#onlineToast');el.textContent=message;el.hid
 function errorMessage(error){try{const parsed=JSON.parse(error.message);return parsed.message||parsed.msg||error.message}catch(_){return error.message||'操作失败'}}
 function productStock(product){return Array.isArray(product.variants)&&product.variants.length?product.variants.reduce((sum,v)=>sum+(Number(v.quantity)||0),0):Number(product.stock)||0}
 function switchView(name){document.querySelectorAll('.admin-view').forEach(view=>view.classList.toggle('active',view.id===`view-${name}`));document.querySelectorAll('.sidebar nav button').forEach(button=>button.classList.toggle('active',button.dataset.view===name))}
-async function loadAll(){[products,settings,orders]=await Promise.all([CloudAPI.loadProducts(true),CloudAPI.loadSettings(true),CloudAPI.loadOrders()]);renderProducts();fillSettings();renderOrders()}
+async function loadAll(){
+  products=await CloudAPI.loadProducts(true);
+  try{settings=await CloudAPI.loadSettings(true)}catch(_){settings={}}
+  try{orders=await CloudAPI.loadOrders()}catch(_){orders=[]}
+  renderProducts();fillSettings();renderOrders()
+}
 async function start(){$('#loginView')?.remove();$('#onlineApp').hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll();setInterval(async()=>{if($('#productDialog').open||$('#onlineImportDialog')?.open)return;try{products=await CloudAPI.loadProducts(true);orders=await CloudAPI.loadOrders();renderProducts();renderOrders()}catch(_){}},20000)}
 $('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';if(!CloudAPI.configured){$('#loginError').textContent='云端项目尚未配置，请先完成 Supabase 设置。';return}try{const data=new FormData(event.target);await CloudAPI.login(data.get('email'),data.get('password'));await start()}catch(error){$('#loginError').textContent='登录失败：'+errorMessage(error)}});
 start().catch(error=>{const message=$('#loginError');if(message)message.textContent='后台加载失败：'+errorMessage(error)});
