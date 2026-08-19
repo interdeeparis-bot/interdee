@@ -12,7 +12,7 @@ function productStock(product){return Array.isArray(product.variants)&&product.v
 function switchView(name){document.querySelectorAll('.admin-view').forEach(view=>view.classList.toggle('active',view.id===`view-${name}`));document.querySelectorAll('.sidebar nav button').forEach(button=>button.classList.toggle('active',button.dataset.view===name))}
 async function loadAll(){
   try{products=await CloudAPI.loadProducts(true)}catch(_){products=[]}
-  if(!products.length&&window.StoreData?.getProducts){products=StoreData.getProducts();toast('云端暂时无法连接，已显示本机商品数据')}
+  if(!products.length&&window.StoreData?.getProducts){products=StoreData.getProducts();if(!products.length&&StoreData.defaults?.products)products=StoreData.defaults.products;toast('云端暂时无法连接，已显示本机商品数据')}
   try{settings=await CloudAPI.loadSettings(true)}catch(_){settings={}}
   if(!Object.keys(settings).length&&window.StoreData?.getSettings)settings=StoreData.getSettings()
   try{orders=await CloudAPI.loadOrders()}catch(_){orders=[]}
