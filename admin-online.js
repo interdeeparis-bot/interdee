@@ -3,7 +3,7 @@ if(!window.CloudAPI){(function(){const base='https://xvqnxforarptdqfgsntp.supaba
 const sizes=['F','XS','S','M','L','XL','S/M','M/L'];
 const categories=[['robes','Robes'],['hauts','Hauts'],['chemises','Chemises'],['pulls','Pulls & gilets'],['vestes','Vestes'],['manteaux','Manteaux'],['pantalons','Pantalons'],['jeans','Jeans'],['jupes','Jupes'],['shorts','Shorts'],['combinaisons','Combinaisons'],['ensembles','Ensembles'],['accessoires','Accessoires'],['autres','Autres']];
 const labels=Object.fromEntries(categories),icons={robes:'👗',hauts:'👚',chemises:'👔',pulls:'🧶',vestes:'🧥',manteaux:'🧥',pantalons:'👖',jeans:'👖',jupes:'👗',shorts:'🩳',combinaisons:'👗',ensembles:'🧵',accessoires:'👜',autres:'✦'};
-let products=[],settings={},orders=[],editing=null;
+let products=[],settings={},orders=[],editing=null,refreshTimer=null;
 function fixImportedPrice(result){if(!result||!Array.isArray(result.records))return result;result.records.forEach(row=>{if(Number(row.discount)>0&&Number(row.original)===Number(row.price))row.price=+(Number(row.original)*(1-Number(row.discount)/100)).toFixed(2)});return result}
 const $=selector=>document.querySelector(selector),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 function toast(message){const el=$('#onlineToast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,2800)}
@@ -15,13 +15,15 @@ async function loadAll(){
   if(!products.length&&window.StoreData?.getProducts){products=StoreData.getProducts();if(!products.length&&StoreData.defaults?.products)products=StoreData.defaults.products;toast('云端暂时无法连接，已显示本机商品数据')}
   try{settings=await CloudAPI.loadSettings(true)}catch(_){settings={}}
   if(!Object.keys(settings).length&&window.StoreData?.getSettings)settings=StoreData.getSettings()
-  try{orders=await CloudAPI.loadOrders()}catch(_){orders=[]}
+  orders=await CloudAPI.loadOrders()
   renderProducts();fillSettings();renderOrders()
 }
-async function start(){$('#loginView')?.remove();$('#onlineApp').hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll();setInterval(async()=>{if($('#productDialog').open||$('#onlineImportDialog')?.open)return;try{products=await CloudAPI.loadProducts(true);orders=await CloudAPI.loadOrders();renderProducts();renderOrders()}catch(_){}},20000)}
-$('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';if(!CloudAPI.configured){$('#loginError').textContent='云端项目尚未配置，请先完成 Supabase 设置。';return}try{const data=new FormData(event.target);await CloudAPI.login(data.get('email'),data.get('password'));await start()}catch(error){$('#loginError').textContent='登录失败：'+errorMessage(error)}});
-start().catch(error=>{const message=$('#loginError');if(message)message.textContent='后台加载失败：'+errorMessage(error)});
-$('#logoutButton').addEventListener('click',()=>location.reload());
+async function requireAdmin(){const rows=await CloudAPI.verifyAdmin();if(!Array.isArray(rows)||!rows.length)throw new Error('该账户没有管理员权限')}
+async function start(){await requireAdmin();$('#loginView').hidden=true;$('#onlineApp').hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll();if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(async()=>{if($('#productDialog').open||$('#onlineImportDialog')?.open)return;try{products=await CloudAPI.loadProducts(true);orders=await CloudAPI.loadOrders();renderProducts();renderOrders()}catch(error){console.error('后台刷新失败：',error)}},20000)}
+async function showLogin(error=''){$('#onlineApp').hidden=true;$('#loginView').hidden=false;$('#loginError').textContent=error}
+$('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';if(!CloudAPI.configured){$('#loginError').textContent='云端项目尚未配置，请先完成 Supabase 设置。';return}const button=event.target.querySelector('button[type="submit"]');button.disabled=true;try{const data=new FormData(event.target);await CloudAPI.login(data.get('email'),data.get('password'));await start()}catch(error){CloudAPI.logout();await showLogin('登录失败：'+errorMessage(error))}finally{button.disabled=false}});
+(async()=>{try{await start()}catch(_){CloudAPI.logout();await showLogin()}})();
+$('#logoutButton').addEventListener('click',()=>{CloudAPI.logout();location.reload()});
 document.querySelectorAll('.sidebar nav button').forEach(button=>button.addEventListener('click',()=>switchView(button.dataset.view)));
 function renderProducts(){
   const visible=products.filter(p=>p.visible!==false),total=products.reduce((sum,p)=>sum+productStock(p),0),low=products.filter(p=>productStock(p)<3).length,sold=products.filter(p=>productStock(p)===0).length;
