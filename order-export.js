@@ -40,6 +40,17 @@
     return clean || fallback;
   }
 
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
   function number(value) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
@@ -178,11 +189,17 @@
     const model = buildModel(order, products, statusLabels);
     const root = document.createElement('section');
     root.className = 'order-pdf-document';
-    root.style.cssText = 'position:fixed;left:-100000px;top:0;width:1080px;background:#fff;color:#17251e;padding:28px;font-family:Arial,"Microsoft YaHei",sans-serif;';
+    root.style.cssText = 'position:fixed;left:0;top:0;width:1120px;min-height:760px;background:#fff;color:#17251e;padding:28px;font-family:Arial,"Microsoft YaHei",sans-serif;z-index:2147483647;overflow:visible;';
     root.innerHTML = `<style>.order-pdf-document h1{font-size:24px;margin:0;color:#173529}.order-pdf-document .subtitle{margin:4px 0 18px;color:#64736c}.order-pdf-document .info{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}.order-pdf-document .info div{border:1px solid #dce3df;padding:7px 9px;font-size:10px}.order-pdf-document .info strong{display:block;color:#4472c4;margin-bottom:2px}.order-pdf-document .note{grid-column:1/-1;white-space:pre-wrap}.order-pdf-document table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5px}.order-pdf-document th{background:#4472c4;color:white;font-weight:bold;padding:7px 3px;border:1px solid #2f5597;text-align:center}.order-pdf-document td{padding:6px 3px;border:1px solid #b7c9e2;text-align:center;word-break:break-word}.order-pdf-document th:nth-child(2),.order-pdf-document td:nth-child(2){width:9%}.order-pdf-document th:nth-child(3),.order-pdf-document td:nth-child(3){width:13%}.order-pdf-document th:nth-child(4),.order-pdf-document td:nth-child(4){width:9%}.order-pdf-document th:nth-child(5),.order-pdf-document td:nth-child(5){width:8%}.order-pdf-document .total td{font-weight:bold;background:#edf3fa}.order-pdf-document .total td:first-child{background:#4472c4;color:#fff}</style><h1>INTERDEE · 客户订单</h1><p class="subtitle">订单号：${escapeHtml(model.code)} · ${escapeHtml(model.status)} · ${escapeHtml(model.createdAt)}</p><div class="info"><div><strong>客户姓名</strong>${escapeHtml(model.customer.name)}</div><div><strong>电话</strong>${escapeHtml(model.customer.phone)}</div><div><strong>邮箱</strong>${escapeHtml(model.customer.email)}</div><div class="note"><strong>客户备注</strong>${escapeHtml(model.customer.note || '无备注')}</div></div>${pdfTable(model)}`;
     document.body.appendChild(root);
     try {
-      await html2pdf().set({ margin: 5, filename: `${model.filename}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['tr'] } }).from(root).save();
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const worker = html2pdf().set({ margin: 5, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 1120 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['tr'] } }).from(root).toPdf();
+      const blob = await worker.outputPdf('blob');
+      if (!(blob instanceof Blob) || blob.size < 5000) throw new Error('PDF 内容生成失败，请刷新后台后重试。');
+      downloadBlob(blob, `${model.filename}.pdf`);
+      model.pdfBytes = blob.size;
     } finally {
       root.remove();
     }
