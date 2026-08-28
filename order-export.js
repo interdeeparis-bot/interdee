@@ -2,7 +2,7 @@
   'use strict';
 
   const SHEET_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
-  const HTML2PDF_URL = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+  const JSPDF_URL = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
   const SIZES = ['F', 'XS', 'S', 'M', 'L', 'XL', 'S/M', 'M/L'];
   const HEADERS = ['序号', 'CATEGORIE', 'COMPOSITION', 'REFERENCE', 'COULEUR', 'F', 'XS(2岁)', 'S（4岁）', 'M（6岁）', 'L（8岁）', 'XL（10岁）', 'S/M', 'M/L', 'QTE TOTAL', 'PRIX'];
   let sheetPromise;
@@ -25,9 +25,9 @@
     return sheetPromise;
   }
 
-  function loadHtml2Pdf() {
-    if (window.html2pdf) return Promise.resolve(window.html2pdf);
-    if (!pdfPromise) pdfPromise = loadScript(HTML2PDF_URL, () => window.html2pdf);
+  function loadJsPdf() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    if (!pdfPromise) pdfPromise = loadScript(JSPDF_URL, () => window.jspdf && window.jspdf.jsPDF);
     return pdfPromise;
   }
 
@@ -178,31 +178,135 @@
     return model;
   }
 
-  function pdfTable(model) {
-    const rows = model.rows.map(row => `<tr><td>${row.sequence}</td><td>${escapeHtml(row.category)}</td><td>${escapeHtml(row.composition)}</td><td><strong>${escapeHtml(row.reference)}</strong></td><td>${escapeHtml(row.color)}</td>${SIZES.map(size => `<td>${row.sizes[size] || ''}</td>`).join('')}<td><strong>${row.quantity}</strong></td><td>${row.price.toFixed(2)} €</td></tr>`).join('');
-    const sizeTotals = Object.fromEntries(SIZES.map(size => [size, model.rows.reduce((sum, row) => sum + row.sizes[size], 0)]));
-    return `<table><thead><tr>${HEADERS.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows}<tr class="total"><td>合计</td><td>/</td><td>/</td><td>/</td><td>/</td>${SIZES.map(size => `<td>${sizeTotals[size] || ''}</td>`).join('')}<td>${model.totalQuantity}</td><td>${model.totalAmount.toFixed(2)} €</td></tr></tbody></table>`;
+  function wrapCanvasText(context, value, maxWidth, maxLines = 2) {
+    const text = String(value == null ? '' : value);
+    if (!text) return [''];
+    const characters = [...text];
+    const lines = [];
+    let line = '';
+    for (const character of characters) {
+      const next = line + character;
+      if (line && context.measureText(next).width > maxWidth) {
+        lines.push(line);
+        line = character;
+        if (lines.length === maxLines - 1) break;
+      } else line = next;
+    }
+    if (lines.length < maxLines) {
+      const consumed = lines.join('').length;
+      const remainder = characters.slice(consumed).join('');
+      let finalLine = remainder;
+      while (context.measureText(finalLine).width > maxWidth && finalLine.length > 1) finalLine = finalLine.slice(0, -1);
+      if (finalLine.length < remainder.length && finalLine.length > 1) finalLine = finalLine.slice(0, -1) + '…';
+      lines.push(finalLine);
+    }
+    return lines.slice(0, maxLines);
+  }
+
+  function drawCell(context, text, x, y, width, height, options = {}) {
+    context.fillStyle = options.fill || '#ffffff';
+    context.fillRect(x, y, width, height);
+    context.strokeStyle = options.border || '#b7c9e2';
+    context.lineWidth = 1;
+    context.strokeRect(x, y, width, height);
+    context.fillStyle = options.color || '#17251e';
+    context.font = `${options.bold ? '700' : '400'} ${options.fontSize || 15}px Arial, "Microsoft YaHei", sans-serif`;
+    context.textAlign = options.align || 'center';
+    context.textBaseline = 'middle';
+    const padding = 7;
+    const lines = wrapCanvasText(context, text, width - padding * 2, options.maxLines || 2);
+    const lineHeight = (options.fontSize || 15) + 3;
+    const startY = y + height / 2 - (lines.length - 1) * lineHeight / 2;
+    lines.forEach((line, index) => context.fillText(line, options.align === 'left' ? x + padding : x + width / 2, startY + index * lineHeight, width - padding * 2));
+  }
+
+  function pdfRowValues(row) {
+    return [row.sequence, row.category, row.composition, row.reference, row.color, ...SIZES.map(size => row.sizes[size] || ''), row.quantity, `${row.price.toFixed(2)} €`];
+  }
+
+  function makePdfCanvas(model, rows, pageNumber, pageCount, includeTotal) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1600;
+    canvas.height = 1130;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#173529';
+    context.font = '700 34px Arial, "Microsoft YaHei", sans-serif';
+    context.textAlign = 'left';
+    context.fillText('INTERDEE · CLIENT ORDER', 30, 48);
+    context.font = '400 16px Arial, "Microsoft YaHei", sans-serif';
+    context.fillStyle = '#5f6f67';
+    context.fillText(`ORDER: ${model.code}   STATUS: ${model.status}   DATE: ${model.createdAt}   PAGE: ${pageNumber}/${pageCount}`, 30, 78);
+    let tableY = 108;
+    if (pageNumber === 1) {
+      context.font = '700 16px Arial, "Microsoft YaHei", sans-serif';
+      context.fillStyle = '#4472c4';
+      context.fillText('CLIENT', 30, 112);
+      context.fillStyle = '#17251e';
+      context.font = '400 16px Arial, "Microsoft YaHei", sans-serif';
+      context.fillText(`${model.customer.name}   |   ${model.customer.phone}   |   ${model.customer.email}`, 105, 112);
+      context.font = '700 16px Arial, "Microsoft YaHei", sans-serif';
+      context.fillStyle = '#4472c4';
+      context.fillText('NOTE', 30, 140);
+      context.fillStyle = '#17251e';
+      context.font = '400 16px Arial, "Microsoft YaHei", sans-serif';
+      const noteLines = wrapCanvasText(context, model.customer.note || '无备注', 1420, 2);
+      noteLines.forEach((line, index) => context.fillText(line, 105, 140 + index * 20));
+      tableY = 180;
+    }
+    const rawWidths = [50, 150, 220, 145, 125, 50, 60, 60, 60, 60, 65, 65, 65, 95, 105];
+    const available = 1540;
+    const scale = available / rawWidths.reduce((sum, value) => sum + value, 0);
+    const widths = rawWidths.map(value => value * scale);
+    const rowHeight = 52;
+    let x = 30;
+    HEADERS.forEach((header, index) => {
+      drawCell(context, header, x, tableY, widths[index], 50, { fill: '#4472c4', color: '#ffffff', border: '#2f5597', bold: true, fontSize: 15 });
+      x += widths[index];
+    });
+    let y = tableY + 50;
+    rows.forEach(row => {
+      x = 30;
+      pdfRowValues(row).forEach((value, index) => {
+        drawCell(context, value, x, y, widths[index], rowHeight, { align: index >= 1 && index <= 4 ? 'left' : 'center', bold: index === 3 || index === 13, fontSize: 15 });
+        x += widths[index];
+      });
+      y += rowHeight;
+    });
+    if (includeTotal) {
+      const sizeTotals = Object.fromEntries(SIZES.map(size => [size, model.rows.reduce((sum, row) => sum + row.sizes[size], 0)]));
+      const values = ['合计', '/', '/', '/', '/', ...SIZES.map(size => sizeTotals[size] || ''), model.totalQuantity, `${model.totalAmount.toFixed(2)} €`];
+      x = 30;
+      values.forEach((value, index) => {
+        drawCell(context, value, x, y, widths[index], rowHeight, { fill: index === 0 ? '#4472c4' : '#edf3fa', color: index === 0 ? '#ffffff' : '#17251e', bold: true, fontSize: 15 });
+        x += widths[index];
+      });
+    }
+    context.fillStyle = '#66726c';
+    context.font = '400 13px Arial, sans-serif';
+    context.textAlign = 'right';
+    context.fillText('INTERDEE PARIS', 1570, 1105);
+    return canvas;
   }
 
   async function downloadPdf(order, products, statusLabels) {
-    const html2pdf = await loadHtml2Pdf();
+    const JsPdf = await loadJsPdf();
     const model = buildModel(order, products, statusLabels);
-    const root = document.createElement('section');
-    root.className = 'order-pdf-document';
-    root.style.cssText = 'position:fixed;left:0;top:0;width:1120px;min-height:760px;background:#fff;color:#17251e;padding:28px;font-family:Arial,"Microsoft YaHei",sans-serif;z-index:2147483647;overflow:visible;';
-    root.innerHTML = `<style>.order-pdf-document h1{font-size:24px;margin:0;color:#173529}.order-pdf-document .subtitle{margin:4px 0 18px;color:#64736c}.order-pdf-document .info{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}.order-pdf-document .info div{border:1px solid #dce3df;padding:7px 9px;font-size:10px}.order-pdf-document .info strong{display:block;color:#4472c4;margin-bottom:2px}.order-pdf-document .note{grid-column:1/-1;white-space:pre-wrap}.order-pdf-document table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5px}.order-pdf-document th{background:#4472c4;color:white;font-weight:bold;padding:7px 3px;border:1px solid #2f5597;text-align:center}.order-pdf-document td{padding:6px 3px;border:1px solid #b7c9e2;text-align:center;word-break:break-word}.order-pdf-document th:nth-child(2),.order-pdf-document td:nth-child(2){width:9%}.order-pdf-document th:nth-child(3),.order-pdf-document td:nth-child(3){width:13%}.order-pdf-document th:nth-child(4),.order-pdf-document td:nth-child(4){width:9%}.order-pdf-document th:nth-child(5),.order-pdf-document td:nth-child(5){width:8%}.order-pdf-document .total td{font-weight:bold;background:#edf3fa}.order-pdf-document .total td:first-child{background:#4472c4;color:#fff}</style><h1>INTERDEE · 客户订单</h1><p class="subtitle">订单号：${escapeHtml(model.code)} · ${escapeHtml(model.status)} · ${escapeHtml(model.createdAt)}</p><div class="info"><div><strong>客户姓名</strong>${escapeHtml(model.customer.name)}</div><div><strong>电话</strong>${escapeHtml(model.customer.phone)}</div><div><strong>邮箱</strong>${escapeHtml(model.customer.email)}</div><div class="note"><strong>客户备注</strong>${escapeHtml(model.customer.note || '无备注')}</div></div>${pdfTable(model)}`;
-    document.body.appendChild(root);
-    try {
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const worker = html2pdf().set({ margin: 5, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, windowWidth: 1120 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }, pagebreak: { mode: ['css', 'legacy'], avoid: ['tr'] } }).from(root).toPdf();
-      const blob = await worker.outputPdf('blob');
-      if (!(blob instanceof Blob) || blob.size < 5000) throw new Error('PDF 内容生成失败，请刷新后台后重试。');
-      downloadBlob(blob, `${model.filename}.pdf`);
-      model.pdfBytes = blob.size;
-    } finally {
-      root.remove();
+    const rowsPerPage = 14;
+    const pageCount = Math.max(1, Math.ceil(model.rows.length / rowsPerPage));
+    const pdf = new JsPdf({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+    for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+      if (pageIndex) pdf.addPage('a4', 'landscape');
+      const start = pageIndex * rowsPerPage;
+      const pageRows = model.rows.slice(start, start + rowsPerPage);
+      const canvas = makePdfCanvas(model, pageRows, pageIndex + 1, pageCount, pageIndex === pageCount - 1);
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
     }
+    const blob = pdf.output('blob');
+    if (!(blob instanceof Blob) || blob.size < 10000) throw new Error('PDF 内容生成失败，请刷新后台后重试。');
+    downloadBlob(blob, `${model.filename}.pdf`);
+    model.pdfBytes = blob.size;
     return model;
   }
 
