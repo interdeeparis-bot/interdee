@@ -4,6 +4,9 @@ body[data-theme="rose"]{--orange:#c65570;--yellow:#f0c9cf;--green:#59424c}
 .brand-mark,.hero h1,.card-a strong,.card-b strong,.stamp i,.section-heading h2,.how-section h2,.contact-section h2,dialog h2{font-family:"Playfair Display",Georgia,serif}
 .primary-button span{margin-left:0}.primary-button b{margin-left:25px}
 .product-grid{grid-template-columns:repeat(var(--grid-columns,3),minmax(0,1fr))}
+.product-card{display:flex;flex-direction:column;height:100%}
+.product-meta{display:flex;flex:1;flex-direction:column}
+.reserve-button{display:flex;align-items:center;justify-content:center;min-height:66px;margin-top:auto;text-align:center}
 .reserve-button:disabled{border-color:#bbb;color:#999;cursor:not-allowed;background:#eee}
 .stock.sold-out{background:var(--ink);color:#fff}
 .empty-grid{grid-column:1/-1;text-align:center;padding:80px 20px;color:#7d817d;line-height:1.8}
