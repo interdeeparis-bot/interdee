@@ -3,7 +3,7 @@ if(!window.CloudAPI){(function(){const base='https://xvqnxforarptdqfgsntp.supaba
 const sizes=['F','XS','S','M','L','XL','S/M','M/L'];
 const categories=[['robes','Robes'],['hauts','Hauts'],['chemises','Chemises'],['pulls','Pulls & gilets'],['vestes','Vestes'],['manteaux','Manteaux'],['pantalons','Pantalons'],['jeans','Jeans'],['jupes','Jupes'],['shorts','Shorts'],['combinaisons','Combinaisons'],['ensembles','Ensembles'],['accessoires','Accessoires'],['autres','Autres']];
 const labels=Object.fromEntries(categories),icons={robes:'👗',hauts:'👚',chemises:'👔',pulls:'🧶',vestes:'🧥',manteaux:'🧥',pantalons:'👖',jeans:'👖',jupes:'👗',shorts:'🩳',combinaisons:'👗',ensembles:'🧵',accessoires:'👜',autres:'✦'};
-let products=[],settings={},orders=[],editing=null,refreshTimer=null;
+let products=[],settings={},orders=[],editing=null;
 function fixImportedPrice(result){if(!result||!Array.isArray(result.records))return result;result.records.forEach(row=>{if(Number(row.discount)>0&&Number(row.original)===Number(row.price))row.price=+(Number(row.original)*(1-Number(row.discount)/100)).toFixed(2)});return result}
 const $=selector=>document.querySelector(selector),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 function toast(message){const el=$('#onlineToast');el.textContent=message;el.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.hidden=true,2800)}
@@ -18,7 +18,7 @@ async function loadAll(){
   orders=await CloudAPI.loadOrders()
   renderProducts();fillSettings();renderOrders()
 }
-async function start(){$('#onlineApp').hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll();if(refreshTimer)clearInterval(refreshTimer);refreshTimer=setInterval(async()=>{if($('#productDialog').open||$('#onlineImportDialog')?.open)return;try{products=await CloudAPI.loadProducts(true);orders=await CloudAPI.loadOrders();renderProducts();renderOrders()}catch(error){console.error('后台刷新失败：',error)}},20000)}
+async function start(){$('#onlineApp').hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll()}
 start().catch(error=>{console.error('后台加载失败：',error);toast('后台加载失败：'+errorMessage(error))});
 document.querySelectorAll('.sidebar nav button').forEach(button=>button.addEventListener('click',()=>switchView(button.dataset.view)));
 function renderProducts(){
