@@ -146,4 +146,4 @@ async function hydrateCloud(){
   if(!window.CloudAPI?.configured)return;
   try{const [cloudProducts,cloudSettings]=await Promise.all([CloudAPI.loadProducts(),CloudAPI.loadSettings()]);if(cloudProducts.length)products=cloudProducts;settings={...settings,...cloudSettings};document.body.classList.add('cloud-ready');applySettings();updateCount();render()}catch(error){console.error('Cloud catalog:',error)}
 }
-applySettings();updateCount();render();hydrateCloud();setInterval(hydrateCloud,30000);
+applySettings();updateCount();render();hydrateCloud();
