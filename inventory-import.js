@@ -10,6 +10,7 @@
     sku: ['reference', 'référence', 'ref', 'sku', 'style', 'style code', '款号', '货号'],
     name: ['name', 'product name', 'nom', 'produit', '品名', '商品名称'],
     category: ['categorie', 'catégorie', 'category', '品类', '类别', '分类'],
+    season: ['saison', 'season', 'collection', '系列', '季节'],
     composition: ['composition', 'matiere', 'matière', 'composant', '成分', '材质'],
     color: ['couleur', 'color', 'colour', '颜色', '色号'],
     size: ['taille', 'size', '尺码', '尺寸'],
@@ -141,13 +142,16 @@
     const records = []; const photoIndex = columns.photo; const dataRows = rows.slice((headerIndex >= 0 ? headerIndex : 0) + 1);
     dataRows.forEach((row, rowNumber) => {
       const sku = readCell(row, columns.sku); if (!sku) return; const color = readCell(row, columns.color) || '—'; const name = readCell(row, columns.name); const cat = category(readCell(row, columns.category)); const composition = readCell(row, columns.composition); let original = number(readCell(row, columns.original)); let price = number(readCell(row, columns.price)); const disc = discount(readCell(row, columns.discount)); if (!price && original && disc) price = +(original * (1 - disc / 100)).toFixed(2); if (!original && price && disc < 100) original = +(price / (1 - disc / 100)).toFixed(2); if (!price) errors.push(`第 ${rowNumber + 2} 行（${sku}）缺少价格。`);
-      const base = { sku, name, category: cat, composition, original: original || price, price: price || original, discount: disc, image: rowPhoto(matrix, row._rowIndex ?? rowNumber, photoIndex) };
+      const seasonValue = clean(readCell(row, columns.season)).toUpperCase();
+      const season = ['26FW', 'SS', 'FW'].includes(seasonValue) ? seasonValue : (/^(?:65|66)\d{4}$/i.test(sku) ? '26FW' : 'FW');
+      const effectivePrice = season === '26FW' ? (original || price) : (price || original);
+      const base = { sku, name, category: cat, season, composition, original: original || price, price: effectivePrice, discount: season === '26FW' ? 0 : disc, image: rowPhoto(matrix, row._rowIndex ?? rowNumber, photoIndex) };
       const hasSizeColumns = Object.keys(sizeColumns).length > 0; if (hasSizeColumns) Object.entries(sizeColumns).forEach(([size, index]) => { const quantity = Math.max(0, Math.floor(number(row[index]))); if (quantity > 0) records.push({ ...base, color, size, quantity }); });
       else { const size = readCell(row, columns.size) || 'F'; const quantity = Math.max(0, Math.floor(number(readCell(row, columns.quantity) || readCell(row, columns.total)))); if (quantity > 0) records.push({ ...base, color, size, quantity }); }
     });
     if (matrix._imageError) warnings.push('未能读取部分 Excel 内嵌图片，请确认图片是直接插入 PHOTO 单元格且文件为 .xlsx。'); if (!records.length && !errors.length) errors.push('没有找到有效库存数量。'); return { records, errors, warnings };
   }
   async function parseFile(file) { if (!file) throw new Error('请选择 Excel 或 PDF 文件。'); const lower = file.name.toLowerCase(); if (lower.endsWith('.pdf')) return parsePdf(file); if (lower.endsWith('.csv')) { const rows = parseCsvText(await file.text()); rows.forEach((row, index) => { row._rowIndex = index; }); return rows; } return parseSpreadsheet(file); }
-  async function downloadTemplate() { const XLSX = await loadSheetJs(); const headers = ['PHOTO', 'CATEGORIE', 'COMPOSITION', 'REFERENCE', 'COULEUR', 'F', 'XS', 'S', 'M', 'L', 'XL', 'S/M', 'M/L', 'QTE TOTAL', 'PRIX', 'REMISE']; const sample = ['', 'PANTALON', '100% coton', 'EXAMPLE-001', 'NOIR', '', '', 2, 1, '', '', '', '', 3, 49, 50]; const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([headers, sample]), '库存表'); XLSX.writeFile(book, 'interdee-inventory-template.xlsx'); }
+  async function downloadTemplate() { const XLSX = await loadSheetJs(); const headers = ['PHOTO', 'CATEGORIE', 'SAISON', 'COMPOSITION', 'REFERENCE', 'COULEUR', 'F', 'XS', 'S', 'M', 'L', 'XL', 'S/M', 'M/L', 'QTE TOTAL', 'PRIX', 'REMISE']; const sample = ['', 'PANTALON', '26FW', '100% coton', 'EXAMPLE-001', 'NOIR', '', '', 2, 1, '', '', '', '', 3, 49, 0]; const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([headers, sample]), '库存表'); XLSX.writeFile(book, 'interdee-inventory-template.xlsx'); }
   window.InventoryImport = { parseFile, normalize, downloadTemplate };
 }());

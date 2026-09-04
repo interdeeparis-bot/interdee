@@ -6,6 +6,7 @@ let storedReserved;
 try{storedReserved=JSON.parse(localStorage.getItem('reservedDealsV2')||'[]')}catch(_){storedReserved=[]}
 let reserved=(Array.isArray(storedReserved)?storedReserved:[]).map(item=>typeof item==='string'?{id:item,color:'',size:'',quantity:1}:{id:String(item.id||''),color:item.color||'',size:item.size||'',quantity:Math.max(1,Math.floor(Number(item.quantity)||1))});
 let activeFilter='all';
+let activeSeason='all';
 let choosingProduct=null;
 let heroVideoObjectUrl='';
 let heroMediaRequest=0;
@@ -18,6 +19,9 @@ const esc=StoreData.safeText;
 const safeImage=StoreData.safeImage;
 const clothingCategories=StoreData.categories;
 const categoryFilters=document.querySelector('#categoryFilters');
+const collectionSeasons=[['26FW','26FW'],['SS','SS'],['FW','FW']];
+function productSeason(product){const value=String(product?.season||'').trim().toUpperCase();if(collectionSeasons.some(([id])=>id===value))return value;return /^(?:65|66)\d{4}$/i.test(String(product?.id||''))?'26FW':'FW'}
+function productPrice(product){return productSeason(product)==='26FW'?Number(product.original)||Number(product.price)||0:Number(product.price)||0}
 function categoryId(value){return clothingCategories.some(category=>category.id===value)?value:'autres'}
 function categoryLabel(value){return clothingCategories.find(category=>category.id===categoryId(value))?.label||'Autres'}
 
@@ -26,7 +30,7 @@ function syncProductStock(product){
   return product;
 }
 function activeProducts(){return products.map(syncProductStock).filter(p=>p.visible!==false).sort((a,b)=>(a.order??999)-(b.order??999)||String(a.id).localeCompare(String(b.id)))}
-function discount(product){return product.original>product.price?Math.round((1-product.price/product.original)*100):0}
+function discount(product){const price=productPrice(product);return product.original>price?Math.round((1-price/product.original)*100):0}
 function sameSelection(a,b){return a.id===b.id&&(a.color||'')===(b.color||'')&&(a.size||'')===(b.size||'')}
 function productSelections(id){return reserved.filter(item=>item.id===id).reduce((sum,item)=>sum+Math.max(1,Number(item.quantity)||1),0)}
 function availableVariants(product){return (product.variants||[]).filter(v=>Number(v.quantity)>0)}
@@ -69,16 +73,17 @@ function variantSummary(product){
 }
 function renderCategoryFilters(){
   const present=new Set(activeProducts().map(product=>categoryId(product.category)));if(activeFilter!=='all'&&!present.has(activeFilter))activeFilter='all';
-  categoryFilters.innerHTML=`<button class="filter ${activeFilter==='all'?'active':''}" data-filter="all">Tout</button>`+clothingCategories.filter(category=>present.has(category.id)).map(category=>`<button class="filter ${activeFilter===category.id?'active':''}" data-filter="${category.id}">${esc(category.label)}</button>`).join('');
+  const seasonPresent=new Set(activeProducts().map(productSeason));if(activeSeason!=='all'&&!seasonPresent.has(activeSeason))activeSeason='all';
+  categoryFilters.innerHTML=`<button class="filter ${activeFilter==='all'&&activeSeason==='all'?'active':''}" data-filter="all" data-season="all">Tout</button>`+collectionSeasons.map(([id,label])=>`<button class="filter season-filter ${activeSeason===id?'active':''}" data-filter="all" data-season="${id}">${label}</button>`).join('')+clothingCategories.filter(category=>present.has(category.id)).map(category=>`<button class="filter ${activeFilter===category.id&&activeSeason==='all'?'active':''}" data-filter="${category.id}" data-season="all">${esc(category.label)}</button>`).join('');
 }
 function render(){
-  renderCategoryFilters();const list=activeProducts().filter(p=>activeFilter==='all'||categoryId(p.category)===activeFilter);
+  renderCategoryFilters();const list=activeProducts().filter(p=>(activeFilter==='all'||categoryId(p.category)===activeFilter)&&(activeSeason==='all'||productSeason(p)===activeSeason));
   grid.innerHTML=list.length?list.map(product=>{
     const unavailable=Number(product.stock)<=0;const photo=productPhoto(product),photoKey=productPhotoKey(product),hasPhoto=Boolean(photo||photoKey);const count=productSelections(product.id);const hasVariants=Array.isArray(product.variants)&&product.variants.length>0;
     const buttonText=unavailable?'Article épuisé':hasVariants?`Choisir couleur et taille${count?` · ${count} sélectionné${count>1?'s':''}`:''}`:count?'✓ Ajouté à ma sélection':'Réserver gratuitement';
     return `<article class="product-card">
       <div class="product-image ${hasPhoto?'has-photo':''}" style="--shape:${esc(product.color)}"><span class="sale-badge">${discount(product)?'– '+discount(product)+' %':'PRIX DOUX'}</span>${hasPhoto?`<img class="product-photo" ${photo?`src="${photo}"`:''} ${photoKey?`data-media-key="${esc(photoKey)}"`:''} alt="${esc(product.name)}">`:`<span class="product-icon" role="img" aria-label="${esc(product.name)}">${esc(product.icon)}</span>`}<span class="stock ${unavailable?'sold-out':''}">${unavailable?'Épuisé':product.stock+' en stock'}</span></div>
-      <div class="product-meta"><span class="product-category">${esc(categoryLabel(product.category)).toUpperCase()}</span><div class="product-name-row"><span class="product-name">${esc(product.name)}</span><span class="prices"><span class="price">${money.format(Number(product.price))}</span>${product.original>product.price?`<span class="original">${money.format(Number(product.original))}</span>`:''}</span></div>${product.composition?`<p class="product-composition">${esc(product.composition)}</p>`:''}<p class="product-desc">${esc(product.desc)}</p>${variantSummary(product)}
+      <div class="product-meta"><span class="product-category">${esc(categoryLabel(product.category)).toUpperCase()} · ${productSeason(product)}</span><div class="product-name-row"><span class="product-name">${esc(product.name)}</span><span class="prices"><span class="price">${money.format(productPrice(product))}</span>${product.original>productPrice(product)?`<span class="original">${money.format(Number(product.original))}</span>`:''}</span></div>${product.composition?`<p class="product-composition">${esc(product.composition)}</p>`:''}<p class="product-desc">${esc(product.desc)}</p>${variantSummary(product)}
       <button class="reserve-button ${count?'added':''}" data-id="${esc(product.id)}" ${unavailable?'disabled':''}>${buttonText}</button></div>
     </article>`;
   }).join(''):'<div class="empty-grid"><strong>Aucun article pour le moment.</strong><br>Revenez bientôt pour découvrir nos nouveautés.</div>';hydrateProductPhotos();
@@ -113,14 +118,14 @@ document.querySelector('#confirmVariant').addEventListener('click',()=>{
 });
 document.querySelector('#closeVariant').addEventListener('click',()=>variantDialog.close());
 variantDialog.addEventListener('click',event=>{if(event.target===variantDialog)variantDialog.close()});
-categoryFilters.addEventListener('click',event=>{const button=event.target.closest('.filter');if(!button)return;activeFilter=button.dataset.filter;render()});
+categoryFilters.addEventListener('click',event=>{const button=event.target.closest('.filter');if(!button)return;activeFilter=button.dataset.filter||'all';activeSeason=button.dataset.season||'all';render()});
 
 function showDialog(){
   if(!window.CloudAPI?.configured)products=StoreData.getProducts();products.forEach(syncProductStock);updateCount();document.querySelector('#successMessage').hidden=true;document.querySelector('#reserveContent').hidden=false;
   const box=document.querySelector('#reserveItems');
   box.innerHTML=reserved.length?reserved.map((selection,index)=>{const product=products.find(p=>p.id===selection.id);const option=selection.color||selection.size?` · ${esc(selection.color)} ${esc(selection.size)}`:'';return `<div class="reserve-line"><span>${esc(product.name)}${option} · ${money.format(Number(product.price))}</span><button class="remove-item" data-index="${index}">Retirer</button></div>`}).join(''):'<div class="empty">Votre sélection est vide.</div>';
-  box.innerHTML=reserved.length?reserved.map((selection,index)=>{const product=products.find(p=>p.id===selection.id);if(!product)return '';const quantity=Math.max(1,Number(selection.quantity)||1);const option=selection.color||selection.size?` · ${esc(selection.color)} ${esc(selection.size)}`:'';return `<div class="reserve-line"><span>${esc(product.name)}${option} · ${quantity} × ${money.format(Number(product.price))} = <strong>${money.format(Number(product.price)*quantity)}</strong></span><button class="remove-item" data-index="${index}">Retirer</button></div>`}).join(''):'<div class="empty">Votre sélection est vide.</div>';
-  const total=reserved.reduce((sum,selection)=>{const product=products.find(p=>p.id===selection.id);return sum+(product?Number(product.price)*Math.max(1,Number(selection.quantity)||1):0)},0);document.querySelector('#reserveTotal').textContent=`Total de la précommande : ${money.format(total)}`;
+  box.innerHTML=reserved.length?reserved.map((selection,index)=>{const product=products.find(p=>p.id===selection.id);if(!product)return '';const quantity=Math.max(1,Number(selection.quantity)||1),unit=productPrice(product);const option=selection.color||selection.size?` · ${esc(selection.color)} ${esc(selection.size)}`:'';return `<div class="reserve-line"><span>${esc(product.name)}${option} · ${quantity} × ${money.format(unit)} = <strong>${money.format(unit*quantity)}</strong></span><button class="remove-item" data-index="${index}">Retirer</button></div>`}).join(''):'<div class="empty">Votre sélection est vide.</div>';
+  const total=reserved.reduce((sum,selection)=>{const product=products.find(p=>p.id===selection.id);return sum+(product?productPrice(product)*Math.max(1,Number(selection.quantity)||1):0)},0);document.querySelector('#reserveTotal').textContent=`Total de la précommande : ${money.format(total)}`;
   if(!dialog.open)dialog.showModal();
 }
 document.querySelector('#openReserve').addEventListener('click',showDialog);
@@ -129,7 +134,7 @@ document.querySelector('#reserveItems').addEventListener('click',event=>{if(even
 document.querySelector('#reserveForm').addEventListener('submit',async event=>{
   event.preventDefault();if(!reserved.length){dialog.close();document.querySelector('#deals').scrollIntoView();return}
   const form=Object.fromEntries(new FormData(event.target));const fresh=window.CloudAPI?.configured?products:StoreData.getProducts();fresh.forEach(syncProductStock);
-  const selected=reserved.map(selection=>{const product=fresh.find(p=>p.id===selection.id);if(!product)return null;const quantity=Math.max(1,Math.floor(Number(selection.quantity)||1));const variant=product.variants?.find(v=>v.color===selection.color&&v.size===selection.size);if(product.variants?.length&&(!variant||Number(variant.quantity)<quantity))return null;if(!product.variants?.length&&product.stock<quantity)return null;return {id:product.id,name:product.name,price:Number(product.price)||0,color:selection.color||'',size:selection.size||'',quantity,lineTotal:(Number(product.price)||0)*quantity}}).filter(Boolean);
+  const selected=reserved.map(selection=>{const product=fresh.find(p=>p.id===selection.id);if(!product)return null;const quantity=Math.max(1,Math.floor(Number(selection.quantity)||1));const variant=product.variants?.find(v=>v.color===selection.color&&v.size===selection.size);if(product.variants?.length&&(!variant||Number(variant.quantity)<quantity))return null;if(!product.variants?.length&&product.stock<quantity)return null;const unit=productPrice(product);return {id:product.id,name:product.name,price:unit,color:selection.color||'',size:selection.size||'',quantity,lineTotal:unit*quantity}}).filter(Boolean);
   if(!selected.length){reserved=[];updateCount();dialog.close();render();return}
   const submitButton=event.target.querySelector('button[type="submit"]');submitButton.disabled=true;
   try{
