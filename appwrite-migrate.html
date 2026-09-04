@@ -26,12 +26,12 @@
       <div class="migration-progress"><span id="migrationProgress"></span></div><p class="migration-status" id="migrationStatus">等待开始。</p>
     </section>
   </main>
-  <script src="appwrite-config.js?v=20260904-3"></script><script src="appwrite-api.js?v=20260904-3"></script><script src="store-data.js?v=20260903-season1"></script>
+  <script src="appwrite-config.js?v=20260904-3"></script><script src="appwrite-api.js?v=20260904-4"></script><script src="store-data.js?v=20260903-season1"></script>
   <script>
     const $=s=>document.querySelector(s),status=$('#migrationStatus'),loginStatus=$('#migrationLoginStatus'),progress=$('#migrationProgress');
     function setStatus(text){status.textContent=text}
     async function signIn(){loginStatus.textContent='';if(!CloudAPI.configured){loginStatus.textContent='请先填写 appwrite-config.js 中的 projectId。';return}try{await CloudAPI.login($('#migrationEmail').value.trim(),$('#migrationPassword').value);await CloudAPI.verifyAdmin();$('#loginCard').hidden=true;$('#workCard').hidden=false}catch(error){loginStatus.textContent='登录失败：'+(error.message||error)}}
-    async function migrate(includeSettings){const products=StoreData.getProducts();try{if(includeSettings){setStatus('正在导入主页设置…');await CloudAPI.saveSettings(StoreData.getSettings())}let done=0;for(const product of products){await CloudAPI.upsertProducts([product]);done++;progress.style.width=Math.round(done/products.length*100)+'%';setStatus(`正在导入商品 ${done}/${products.length}：${product.id}`)}setStatus(`导入完成：${products.length} 个商品${includeSettings?'和主页设置':''}。旧订单未导入。`)}catch(error){setStatus('导入失败：'+(error.message||error))}}
+    async function migrate(includeSettings){const products=StoreData.getProducts();try{if(includeSettings){setStatus('正在导入主页设置…');await CloudAPI.saveSettings(StoreData.getSettings())}setStatus(`正在批量导入 ${products.length} 个商品…`);await CloudAPI.upsertProducts(products);progress.style.width='100%';setStatus(`导入完成：${products.length} 个商品${includeSettings?'和主页设置':''}。旧订单未导入。`)}catch(error){setStatus('导入失败：'+(error.message||error))}}
     $('#migrationLogin').addEventListener('click',signIn);$('#migrateAll').addEventListener('click',()=>migrate(true));$('#migrateProducts').addEventListener('click',()=>migrate(false));$('#migrationLogout').addEventListener('click',async()=>{await CloudAPI.logout();location.reload()});
   </script>
 </body>
