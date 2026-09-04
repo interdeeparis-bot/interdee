@@ -22,10 +22,15 @@ async function loadAll(){
   try{orders=await CloudAPI.loadOrders()}catch(_){orders=[]}
   renderProducts();fillSettings();renderOrders()
 }
-async function start(){$('#loginView')?.remove();$('#onlineApp').hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll()}
-$('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';if(!CloudAPI.configured){$('#loginError').textContent='云端项目尚未配置，请先完成 Supabase 设置。';return}try{const data=new FormData(event.target);await CloudAPI.login(data.get('email'),data.get('password'));await start()}catch(error){$('#loginError').textContent='登录失败：'+errorMessage(error)}});
+async function start(){
+  const loginView=$('#loginView'),app=$('#onlineApp'),errorBox=$('#loginError');
+  if(!CloudAPI.configured){loginView.hidden=false;app.hidden=true;if(errorBox)errorBox.textContent='请先在 appwrite-config.js 填写 Appwrite 项目 ID。';return}
+  try{await CloudAPI.verifyAdmin();loginView.hidden=true;app.hidden=false;ensureCatalogueFilters();ensureOnlineImport();ensureOrderExportControls();await loadAll()}
+  catch(error){loginView.hidden=false;app.hidden=true;if(errorBox)errorBox.textContent='请使用管理员账号登录：'+errorMessage(error)}
+}
+$('#loginForm').addEventListener('submit',async event=>{event.preventDefault();$('#loginError').textContent='';if(!CloudAPI.configured){$('#loginError').textContent='请先在 appwrite-config.js 填写 Appwrite 项目 ID。';return}try{const data=new FormData(event.target);await CloudAPI.login(data.get('email'),data.get('password'));await start()}catch(error){$('#loginError').textContent='登录失败：'+errorMessage(error)}});
 start().catch(error=>{const message=$('#loginError');if(message)message.textContent='后台加载失败：'+errorMessage(error)});
-$('#logoutButton').addEventListener('click',()=>location.reload());
+$('#logoutButton').addEventListener('click',async()=>{await CloudAPI.logout();location.reload()});
 document.querySelectorAll('.sidebar nav button').forEach(button=>button.addEventListener('click',()=>switchView(button.dataset.view)));
 function renderProducts(){
   const visible=products.filter(p=>p.visible!==false),total=products.reduce((sum,p)=>sum+productStock(p),0),low=products.filter(p=>productStock(p)<3).length,sold=products.filter(p=>productStock(p)===0).length;
@@ -67,3 +72,4 @@ async function confirmAndDeduct(order){const changed=new Set();for(const item of
 $('#orderList').addEventListener('click',async event=>{const button=event.target.closest('button'),id=button?.dataset.order,download=button?.dataset.download,status=button?.dataset.status;if(!id)return;const order=orders.find(o=>o.id===id);if(!order)return;if(download){if(!window.OrderExport){alert('订单下载组件没有加载，请刷新后台后重试。');return}button.disabled=true;try{const result=download==='excel'?await OrderExport.downloadExcel(order,products,statusLabels):await OrderExport.downloadPdf(order,products,statusLabels);button.closest('details')?.removeAttribute('open');toast(`${download==='excel'?'Excel':'PDF'} 订单已下载${result?.pdfBytes?`（${Math.ceil(result.pdfBytes/1024)} KB）`:''}`)}catch(error){alert(errorMessage(error))}finally{button.disabled=false}return}if(!status)return;try{if(status==='confirmed')await confirmAndDeduct(order);await CloudAPI.updateOrder(id,status);order.status=status;renderProducts();renderOrders();toast('订单状态已更新')}catch(error){alert(errorMessage(error))}});
 $('#refreshOrders').addEventListener('click',async()=>{orders=await CloudAPI.loadOrders();renderOrders();toast('订单已刷新')});
 })();
+
