@@ -110,18 +110,40 @@
     });
     return { ...payload, id: row.$id };
   }
-  async function upsertProducts(products) {
+  async function upsertProducts(products, onProgress) {
     const list = Array.isArray(products) ? products : [];
-    // Keep migration comfortably below Appwrite Cloud's per-minute request
-    // limit by using the bulk upsert endpoint (50 rows per request).
+    const tablePath = `/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(productsTableId)}/rows`;
+    const singlePath = product => `${tablePath}/${encodeURIComponent(safeRowId(product.id))}`;
+    const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+    let completed = 0;
     for (let start = 0; start < list.length; start += 50) {
-      const rows = list.slice(start, start + 50).map(product => ({
-        rowId: safeRowId(product.id),
-        data: { payload: text(product) }
-      }));
-      await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(productsTableId)}/rows`, {
-        method: 'PUT', body: { rows }
-      });
+      const chunk = list.slice(start, start + 50);
+      try {
+        // Bulk REST uses raw row objects with $id plus column values.
+        const rows = chunk.map(product => ({ $id: safeRowId(product.id), payload: text(product) }));
+        await request(tablePath, { method: 'PUT', body: { rows } });
+        completed += chunk.length;
+        onProgress?.(completed, list.length, chunk[chunk.length - 1]);
+      } catch (bulkError) {
+        // If a deployment disallows browser bulk writes, fall back to the
+        // normal upsert endpoint and pace requests under the free-plan limit.
+        for (const product of chunk) {
+          let attempts = 0;
+          while (true) {
+            try {
+              await request(singlePath(product), { method: 'PUT', body: { data: { payload: text(product) } } });
+              break;
+            } catch (error) {
+              if (Number(error?.code) !== 429 || attempts >= 5) throw error;
+              attempts += 1;
+              await pause(attempts * 2500);
+            }
+          }
+          completed += 1;
+          onProgress?.(completed, list.length, product);
+          await pause(600);
+        }
+      }
     }
   }
   async function deleteProduct(id) {
