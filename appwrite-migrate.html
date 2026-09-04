@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>INTERDEE · Appwrite 初始化</title>
+  <link rel="stylesheet" href="admin.css"><link rel="stylesheet" href="admin-online.css">
+  <style>
+    body{min-height:100vh;background:#f4f5f1;color:#17251e}.migration{max-width:900px;margin:50px auto;padding:0 22px}.migration-card{background:#fff;border:1px solid #d7ded8;border-radius:16px;padding:30px;box-shadow:0 12px 35px #17251e12}.migration h1{margin:0 0 8px;font-size:34px}.migration p{color:#66746d;line-height:1.6}.migration-login{max-width:470px}.migration label{display:block;margin:16px 0 6px;font-weight:600}.migration input{width:100%;box-sizing:border-box;border:1px solid #c9d3cc;padding:12px;border-radius:8px;font:inherit}.migration button{border:0;border-radius:8px;padding:12px 18px;font:inherit;cursor:pointer}.migration .primary{background:#205742;color:#fff}.migration .secondary{background:#edf1ed;color:#205742}.migration-actions{display:flex;gap:12px;flex-wrap:wrap;margin:25px 0 10px}.migration-progress{height:10px;background:#e8ede9;border-radius:99px;overflow:hidden}.migration-progress span{display:block;height:100%;width:0;background:#ef6a33;transition:width .2s}.migration-status{white-space:pre-wrap;margin-top:14px;color:#205742}.migration-note{padding:14px 16px;background:#fff4dd;border:1px solid #efd99f;border-radius:8px}
+  </style>
+</head>
+<body>
+  <main class="migration">
+    <section class="migration-card migration-login" id="loginCard">
+      <p class="kicker">INTERDEE · APPWRITE</p><h1>初始化免费后台</h1>
+      <p>此页面只用于把现有 658 个商品和主页设置复制到新的 Appwrite 项目。旧订单不会复制。</p>
+      <label>管理员邮箱<input id="migrationEmail" type="email" autocomplete="username"></label>
+      <label>管理员密码<input id="migrationPassword" type="password" autocomplete="current-password"></label>
+      <button class="primary" id="migrationLogin" type="button">登录并开始</button>
+      <p class="migration-status" id="migrationLoginStatus"></p>
+    </section>
+    <section class="migration-card" id="workCard" hidden>
+      <p class="kicker">APPWRITE CLOUD FREE</p><h1>导入现有商品</h1>
+      <p>商品图片继续使用 GitHub Pages 上的现有图片，不重复占用云端空间；以后在后台上传的新图片会保存到 Appwrite Storage。</p>
+      <div class="migration-note">请先确认 Appwrite 中已建立数据库 <strong>interdee</strong>、集合 <strong>products / settings / orders</strong> 和存储桶 <strong>product-media</strong>，并按交接说明设置权限。</div>
+      <div class="migration-actions"><button class="primary" id="migrateAll" type="button">导入商品和页面设置</button><button class="secondary" id="migrateProducts" type="button">只导入商品</button><button class="secondary" id="migrationLogout" type="button">退出</button></div>
+      <div class="migration-progress"><span id="migrationProgress"></span></div><p class="migration-status" id="migrationStatus">等待开始。</p>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/appwrite@17.0.0"></script><script src="appwrite-config.js?v=20260904-1"></script><script src="appwrite-api.js?v=20260904-1"></script><script src="store-data.js?v=20260903-season1"></script>
+  <script>
+    const $=s=>document.querySelector(s),status=$('#migrationStatus'),loginStatus=$('#migrationLoginStatus'),progress=$('#migrationProgress');
+    function setStatus(text){status.textContent=text}
+    async function signIn(){loginStatus.textContent='';if(!CloudAPI.configured){loginStatus.textContent='请先填写 appwrite-config.js 中的 projectId。';return}try{await CloudAPI.login($('#migrationEmail').value.trim(),$('#migrationPassword').value);await CloudAPI.verifyAdmin();$('#loginCard').hidden=true;$('#workCard').hidden=false}catch(error){loginStatus.textContent='登录失败：'+(error.message||error)}}
+    async function migrate(includeSettings){const products=StoreData.getProducts();try{if(includeSettings){setStatus('正在导入主页设置…');await CloudAPI.saveSettings(StoreData.getSettings())}let done=0;for(const product of products){await CloudAPI.upsertProducts([product]);done++;progress.style.width=Math.round(done/products.length*100)+'%';setStatus(`正在导入商品 ${done}/${products.length}：${product.id}`)}setStatus(`导入完成：${products.length} 个商品${includeSettings?'和主页设置':''}。旧订单未导入。`)}catch(error){setStatus('导入失败：'+(error.message||error))}}
+    $('#migrationLogin').addEventListener('click',signIn);$('#migrateAll').addEventListener('click',()=>migrate(true));$('#migrateProducts').addEventListener('click',()=>migrate(false));$('#migrationLogout').addEventListener('click',async()=>{await CloudAPI.logout();location.reload()});
+  </script>
+</body>
+</html>
+
