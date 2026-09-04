@@ -111,9 +111,16 @@
     return { ...payload, id: row.$id };
   }
   async function upsertProducts(products) {
-    for (const product of products || []) {
-      await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(productsTableId)}/rows/${encodeURIComponent(safeRowId(product.id))}`, {
-        method: 'PUT', body: { data: { payload: text(product) } }
+    const list = Array.isArray(products) ? products : [];
+    // Keep migration comfortably below Appwrite Cloud's per-minute request
+    // limit by using the bulk upsert endpoint (50 rows per request).
+    for (let start = 0; start < list.length; start += 50) {
+      const rows = list.slice(start, start + 50).map(product => ({
+        rowId: safeRowId(product.id),
+        data: { payload: text(product) }
+      }));
+      await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(productsTableId)}/rows`, {
+        method: 'PUT', body: { rows }
       });
     }
   }
