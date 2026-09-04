@@ -12,7 +12,7 @@
   <main class="migration">
     <section class="migration-card migration-login" id="loginCard">
       <p class="kicker">INTERDEE · APPWRITE</p><h1>初始化免费后台</h1>
-      <p>此页面只用于把现有 658 个商品和主页设置复制到新的 Appwrite 项目。旧订单不会复制。</p>
+      <p>此页面只用于把现有商品和主页设置复制到新的 Appwrite 项目。旧订单不会复制。</p>
       <label>管理员邮箱<input id="migrationEmail" type="email" autocomplete="username"></label>
       <label>管理员密码<input id="migrationPassword" type="password" autocomplete="current-password"></label>
       <button class="primary" id="migrationLogin" type="button">登录并开始</button>
@@ -26,12 +26,12 @@
       <div class="migration-progress"><span id="migrationProgress"></span></div><p class="migration-status" id="migrationStatus">等待开始。</p>
     </section>
   </main>
-  <script src="appwrite-config.js?v=20260904-3"></script><script src="appwrite-api.js?v=20260904-4"></script><script src="store-data.js?v=20260903-season1"></script>
+  <script src="appwrite-config.js?v=20260904-3"></script><script src="appwrite-api.js?v=20260904-5"></script><script src="store-data.js?v=20260903-season1"></script>
   <script>
     const $=s=>document.querySelector(s),status=$('#migrationStatus'),loginStatus=$('#migrationLoginStatus'),progress=$('#migrationProgress');
     function setStatus(text){status.textContent=text}
     async function signIn(){loginStatus.textContent='';if(!CloudAPI.configured){loginStatus.textContent='请先填写 appwrite-config.js 中的 projectId。';return}try{await CloudAPI.login($('#migrationEmail').value.trim(),$('#migrationPassword').value);await CloudAPI.verifyAdmin();$('#loginCard').hidden=true;$('#workCard').hidden=false}catch(error){loginStatus.textContent='登录失败：'+(error.message||error)}}
-    async function migrate(includeSettings){const products=StoreData.getProducts();try{if(includeSettings){setStatus('正在导入主页设置…');await CloudAPI.saveSettings(StoreData.getSettings())}setStatus(`正在批量导入 ${products.length} 个商品…`);await CloudAPI.upsertProducts(products);progress.style.width='100%';setStatus(`导入完成：${products.length} 个商品${includeSettings?'和主页设置':''}。旧订单未导入。`)}catch(error){setStatus('导入失败：'+(error.message||error))}}
+    async function migrate(includeSettings){const products=StoreData.getProducts();try{if(includeSettings){setStatus('正在导入主页设置…');await CloudAPI.saveSettings(StoreData.getSettings())}setStatus(`正在导入 ${products.length} 个商品…`);await CloudAPI.upsertProducts(products,(done,total,product)=>{progress.style.width=Math.round(done/total*100)+'%';setStatus(`正在导入商品 ${done}/${total}：${product?.id||''}`)});progress.style.width='100%';setStatus(`导入完成：${products.length} 个商品${includeSettings?'和主页设置':''}。旧订单未导入。`)}catch(error){setStatus('导入失败：'+(error.message||error))}}
     $('#migrationLogin').addEventListener('click',signIn);$('#migrateAll').addEventListener('click',()=>migrate(true));$('#migrateProducts').addEventListener('click',()=>migrate(false));$('#migrationLogout').addEventListener('click',async()=>{await CloudAPI.logout();location.reload()});
   </script>
 </body>
