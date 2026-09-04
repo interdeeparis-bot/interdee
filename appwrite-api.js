@@ -48,8 +48,10 @@
     const limit = 100;
     while (true) {
       const params = new URLSearchParams();
-      params.append('queries[]', `limit(${limit})`);
-      params.append('queries[]', `offset(${offset})`);
+      // Appwrite Cloud's current REST API expects each query as a JSON
+      // object (the shorthand `limit(100)` form now returns a syntax error).
+      params.append('queries[0]', JSON.stringify({ method: 'limit', values: [limit] }));
+      params.append('queries[1]', JSON.stringify({ method: 'offset', values: [offset] }));
       const page = await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(tableId)}/rows?${params.toString()}`);
       const pageRows = page?.rows || [];
       rows.push(...pageRows);
@@ -149,4 +151,3 @@
 
   window.CloudAPI = { configured, loadProducts, loadSettings, submitOrder, login, logout, verifyAdmin, upsertProducts, deleteProduct, saveSettings, loadOrders, updateOrder, upload };
 })();
-
