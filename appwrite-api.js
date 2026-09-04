@@ -1,6 +1,5 @@
 (function () {
   const config = window.APPWRITE_CONFIG || {};
-  const sdk = window.Appwrite;
   const endpoint = String(config.endpoint || 'https://cloud.appwrite.io/v1').replace(/\/$/, '');
   const projectId = String(config.projectId || '').trim();
   const databaseId = String(config.databaseId || 'interdee');
@@ -8,18 +7,7 @@
   const settingsTableId = String(config.settingsTableId || config.settingsCollectionId || 'settings');
   const ordersTableId = String(config.ordersTableId || config.ordersCollectionId || 'orders');
   const bucketId = String(config.bucketId || 'product-media');
-  const configured = Boolean(sdk && sdk.TablesDB && endpoint && projectId && projectId !== 'YOUR_PROJECT_ID');
-
-  let client;
-  let account;
-  let tablesDB;
-  let storage;
-  if (configured) {
-    client = new sdk.Client().setEndpoint(endpoint).setProject(projectId);
-    account = new sdk.Account(client);
-    tablesDB = new sdk.TablesDB(client);
-    storage = new sdk.Storage(client);
-  }
+  const configured = Boolean(endpoint && projectId && projectId !== 'YOUR_PROJECT_ID');
 
   const json = (value, fallback) => {
     if (value === undefined || value === null || value === '') return fallback;
@@ -27,7 +15,31 @@
   };
   const text = value => typeof value === 'string' ? value : JSON.stringify(value ?? '');
   const ensure = () => { if (!configured) throw new Error('Appwrite 尚未配置，请先填写项目 ID。'); };
-  const query = (limit, offset) => [sdk.Query.limit(limit), sdk.Query.offset(offset)];
+  const safeRowId = value => {
+    const candidate = String(value || '').trim().replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 36);
+    return candidate || `p-${Date.now()}`;
+  };
+
+  async function request(path, options = {}) {
+    ensure();
+    const headers = new Headers(options.headers || {});
+    headers.set('X-Appwrite-Project', projectId);
+    headers.set('X-Appwrite-Response-Format', '1.9.6');
+    let body = options.body;
+    if (body !== undefined && body !== null && !(body instanceof FormData) && typeof body !== 'string') {
+      headers.set('Content-Type', 'application/json');
+      body = JSON.stringify(body);
+    }
+    const response = await fetch(`${endpoint}${path}`, { ...options, headers, body, credentials: 'include' });
+    const raw = await response.text();
+    let data = json(raw, {});
+    if (!response.ok) {
+      const error = new Error(data?.message || data?.error || `Appwrite 请求失败（${response.status}）`);
+      error.code = Number(data?.code) || response.status;
+      throw error;
+    }
+    return data;
+  }
 
   async function listAll(tableId) {
     ensure();
@@ -35,7 +47,10 @@
     let offset = 0;
     const limit = 100;
     while (true) {
-      const page = await tablesDB.listRows({ databaseId, tableId, queries: query(limit, offset) });
+      const params = new URLSearchParams();
+      params.append('queries[]', `limit(${limit})`);
+      params.append('queries[]', `offset(${offset})`);
+      const page = await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(tableId)}/rows?${params.toString()}`);
       const pageRows = page?.rows || [];
       rows.push(...pageRows);
       if (pageRows.length < limit) break;
@@ -70,23 +85,13 @@
     };
   }
 
-  const safeRowId = value => {
-    const candidate = String(value || '').trim().replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 36);
-    return candidate || `p-${Date.now()}`;
-  };
-
-  async function upsertRow(tableId, id, data) {
-    ensure();
-    return tablesDB.upsertRow({ databaseId, tableId, rowId: safeRowId(id), data });
-  }
-
   async function loadProducts() {
     return (await listAll(productsTableId)).map(fromProduct).sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
   }
   async function loadSettings() {
     ensure();
     try {
-      const row = await tablesDB.getRow({ databaseId, tableId: settingsTableId, rowId: 'site' });
+      const row = await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(settingsTableId)}/rows/site`);
       return json(row?.payload, {});
     } catch (error) {
       if (Number(error?.code) === 404) return {};
@@ -98,34 +103,49 @@
     const now = new Date().toISOString();
     const publicCode = `R${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
     const payload = { public_code: publicCode, created_at: now, status: 'new', customer, items, total: Number(total) || 0 };
-    const row = await tablesDB.createRow({ databaseId, tableId: ordersTableId, rowId: sdk.ID.unique(), data: { payload: text(payload) } });
+    const row = await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(ordersTableId)}/rows`, {
+      method: 'POST', body: { rowId: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, data: { payload: text(payload) } }
+    });
     return { ...payload, id: row.$id };
   }
   async function upsertProducts(products) {
-    for (const product of products || []) await upsertRow(productsTableId, product.id, { payload: text(product) });
+    for (const product of products || []) {
+      await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(productsTableId)}/rows/${encodeURIComponent(safeRowId(product.id))}`, {
+        method: 'PUT', body: { data: { payload: text(product) } }
+      });
+    }
   }
-  async function deleteProduct(id) { ensure(); return tablesDB.deleteRow({ databaseId, tableId: productsTableId, rowId: safeRowId(id) }); }
-  async function saveSettings(data) { return upsertRow(settingsTableId, 'site', { payload: text(data) }); }
-  async function loadOrders() { return (await listAll(ordersTableId)).map(fromOrder).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))); }
+  async function deleteProduct(id) {
+    return request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(productsTableId)}/rows/${encodeURIComponent(safeRowId(id))}`, { method: 'DELETE' });
+  }
+  async function saveSettings(data) {
+    return request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(settingsTableId)}/rows/site`, { method: 'PUT', body: { data: { payload: text(data) } } });
+  }
+  async function loadOrders() {
+    return (await listAll(ordersTableId)).map(fromOrder).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  }
   async function updateOrder(id, status) {
-    ensure();
     const rowId = safeRowId(id);
-    const row = await tablesDB.getRow({ databaseId, tableId: ordersTableId, rowId });
+    const row = await request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(ordersTableId)}/rows/${encodeURIComponent(rowId)}`);
     const payload = json(row?.payload, {});
     payload.status = status;
-    return tablesDB.updateRow({ databaseId, tableId: ordersTableId, rowId, data: { payload: text(payload) } });
+    return request(`/tablesdb/${encodeURIComponent(databaseId)}/tables/${encodeURIComponent(ordersTableId)}/rows/${encodeURIComponent(rowId)}`, { method: 'PATCH', body: { data: { payload: text(payload) } } });
   }
   async function upload(file, folder) {
     ensure();
-    if (!storage) throw new Error('Appwrite Storage 尚未加载');
-    const fileId = sdk.ID.unique();
-    const permissions = [sdk.Permission.read(sdk.Role.any())];
-    const uploaded = await storage.createFile({ bucketId, fileId, file, permissions, folder: folder || undefined });
-    return `${endpoint}/storage/buckets/${bucketId}/files/${uploaded.$id}/view?project=${encodeURIComponent(projectId)}`;
+    const fileId = `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`.slice(0, 36);
+    const form = new FormData();
+    form.append('fileId', fileId);
+    form.append('file', file);
+    form.append('permissions[]', 'read("any")');
+    const uploaded = await request(`/storage/buckets/${encodeURIComponent(bucketId)}/files`, { method: 'POST', body: form });
+    return `${endpoint}/storage/buckets/${encodeURIComponent(bucketId)}/files/${encodeURIComponent(uploaded.$id)}/view?project=${encodeURIComponent(projectId)}`;
   }
-  async function login(email, password) { ensure(); return account.createEmailPasswordSession({ email, password }); }
-  async function verifyAdmin() { ensure(); return account.get(); }
-  async function logout() { if (!account) return; try { await account.deleteSession('current'); } catch (_) {} }
+  async function login(email, password) {
+    return request('/account/sessions/email', { method: 'POST', body: { email, password } });
+  }
+  async function verifyAdmin() { return request('/account'); }
+  async function logout() { try { await request('/account/sessions/current', { method: 'DELETE' }); } catch (_) {} }
 
   window.CloudAPI = { configured, loadProducts, loadSettings, submitOrder, login, logout, verifyAdmin, upsertProducts, deleteProduct, saveSettings, loadOrders, updateOrder, upload };
 })();
