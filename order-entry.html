@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#19231f">
+  <title>INTERDEE · iPad 订单录入</title>
+  <link rel="stylesheet" href="order-entry.css?v=20260914-1">
+</head>
+<body>
+  <section class="login-view" id="loginView">
+    <form class="login-card" id="loginForm">
+      <span class="brand-monogram">I</span>
+      <p class="eyebrow">INTERDEE · SHOWROOM</p>
+      <h1>订单录入系统</h1>
+      <p>请使用管理后台账号登录。</p>
+      <label>邮箱<input name="email" type="email" autocomplete="username" required></label>
+      <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary full" type="submit">登录</button>
+      <p class="form-error" id="loginError" role="alert"></p>
+    </form>
+  </section>
+
+  <div class="app-shell" id="app" hidden>
+    <header class="topbar">
+      <div class="brand"><span class="brand-monogram">I</span><div><strong>INTERDEE</strong><small>ORDER DESK</small></div></div>
+      <div class="top-actions">
+        <button class="ghost" id="newOrderButton" type="button">新建订单</button>
+        <button class="cart-button" id="openOrderButton" type="button">订单 <b id="cartCount">0</b><span id="cartTotal">0,00 €</span></button>
+      </div>
+    </header>
+
+    <main>
+      <section class="catalogue-head">
+        <div><p class="eyebrow">CATALOGUE</p><h1>点击款号，直接录入数量</h1></div>
+        <div class="catalogue-tools">
+          <label class="search-box"><span>⌕</span><input id="searchInput" type="search" placeholder="搜索款号、颜色、品类" autocomplete="off"></label>
+          <select id="seasonFilter" aria-label="按系列筛选"><option value="all">全部系列</option></select>
+          <select id="categoryFilter" aria-label="按品类筛选"><option value="all">全部品类</option></select>
+        </div>
+      </section>
+      <div class="catalogue-status" id="catalogueStatus">正在同步商品资料…</div>
+      <section class="product-grid" id="productGrid" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <dialog class="product-dialog" id="productDialog">
+    <button class="dialog-close" data-close="productDialog" aria-label="关闭">×</button>
+    <div class="product-dialog-layout">
+      <div class="product-visual"><img id="productImage" alt=""><span id="productPlaceholder">INTERDEE</span></div>
+      <div class="product-detail">
+        <p class="eyebrow" id="productMeta"></p>
+        <div class="product-title-row"><h2 id="productTitle"></h2><strong id="productPrice"></strong></div>
+        <p class="composition" id="productComposition"></p>
+        <div class="matrix-wrap"><table class="size-matrix"><thead id="matrixHead"></thead><tbody id="matrixBody"></tbody></table></div>
+        <div class="dialog-summary"><span>本款数量 <b id="productQty">0</b></span><span>金额 <b id="productSubtotal">0,00 €</b></span></div>
+        <button class="primary full" id="confirmProduct" type="button">加入订单</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="order-dialog" id="orderDialog">
+    <button class="dialog-close" data-close="orderDialog" aria-label="关闭">×</button>
+    <div class="order-heading"><div><p class="eyebrow">PROFORMA</p><h2>订单内容</h2></div><button class="ghost" id="clearOrderButton" type="button">清空</button></div>
+    <div class="order-layout">
+      <section class="order-lines" id="orderLines"></section>
+      <aside class="order-form-card">
+        <form id="orderForm">
+          <h3>客户与订单信息</h3>
+          <div class="form-grid">
+            <label class="wide">客户 / 公司名称 *<input name="customerName" required></label>
+            <label>客户编号<input name="customerCode"></label>
+            <label>VAT / 税号<input name="vatNumber"></label>
+            <label class="wide">账单地址<textarea name="billingAddress" rows="2"></textarea></label>
+            <label>邮箱<input name="email" type="email"></label>
+            <label>电话<input name="phone" type="tel"></label>
+            <label>订单号<input name="orderNumber" required></label>
+            <label>订单日期<input name="orderDate" type="date" required></label>
+            <label>系列<input name="season"></label>
+            <label>预计交货<input name="delivery"></label>
+            <label>付款条件<input name="paymentTerms" placeholder="30% deposit, balance before shipment"></label>
+            <label>币种<select name="currency"><option value="EUR">EUR €</option><option value="USD">USD $</option><option value="GBP">GBP £</option></select></label>
+            <label class="wide">备注<textarea name="note" rows="2"></textarea></label>
+          </div>
+          <details class="seller-settings"><summary>开票方资料</summary><div class="form-grid compact"><label>公司名称<input name="sellerName"></label><label>品牌<input name="sellerBrand"></label><label class="wide">地址<textarea name="sellerAddress" rows="2"></textarea></label><label>VAT / SIRET<input name="sellerTaxId"></label><label>邮箱<input name="sellerEmail" type="email"></label></div></details>
+        </form>
+        <div class="totals"><div><span>总件数</span><b id="totalQty">0</b></div><div><span>订单总额</span><strong id="grandTotal">0,00 €</strong></div></div>
+        <div class="export-actions">
+          <button class="secondary" id="saveOnlineButton" type="button">保存到后台</button>
+          <button class="secondary" id="excelButton" type="button">导出 Excel</button>
+          <button class="primary" id="pdfButton" type="button">生成 PDF Proforma</button>
+        </div>
+        <p class="save-status" id="saveStatus" role="status"></p>
+      </aside>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="appwrite-config.js?v=20260904-3"></script>
+  <script src="appwrite-api.js?v=20260904-5"></script>
+  <script src="store-data.js?v=20260903-season1"></script>
+  <script src="proforma-export.js?v=20260914-1"></script>
+  <script src="order-entry.js?v=20260914-1"></script>
+</body>
+</html>
