@@ -17,6 +17,8 @@
       <label>邮箱<input name="email" type="email" autocomplete="username" required></label>
       <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
       <button class="primary full" type="submit">登录</button>
+      <button class="ghost full offline-entry" id="offlineButton" type="button">临时进入本机模式</button>
+      <p class="offline-note">本机模式可录入订单并导出 PDF / Excel，但不能同步到在线后台。</p>
       <p class="form-error" id="loginError" role="alert"></p>
     </form>
   </section>
@@ -100,6 +102,6 @@
   <script src="appwrite-api.js?v=20260904-5"></script>
   <script src="store-data.js?v=20260903-season1"></script>
   <script src="proforma-export.js?v=20260914-1"></script>
-  <script src="order-entry.js?v=20260914-1"></script>
+  <script src="order-entry.js?v=20260914-2"></script>
 </body>
 </html>
