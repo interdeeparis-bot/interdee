@@ -15,6 +15,8 @@ button{cursor:pointer}
 .login-card input,.order-form-card input,.order-form-card select,.order-form-card textarea,.catalogue-tools input,.catalogue-tools select{width:100%;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);padding:13px 14px;outline:none;min-height:48px}
 .login-card input:focus,.order-form-card input:focus,.order-form-card select:focus,.order-form-card textarea:focus,.catalogue-tools input:focus,.catalogue-tools select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(178,31,61,.1)}
 .form-error{min-height:22px;color:#a21631;margin:12px 0 0}
+.offline-entry{margin-top:10px}
+.login-card .offline-note{margin:10px 0 0!important;color:var(--muted);font-size:.78rem;line-height:1.5;text-align:center}
 .topbar{position:sticky;top:0;z-index:20;min-height:76px;padding:max(12px,env(safe-area-inset-top)) 24px 12px;display:flex;align-items:center;justify-content:space-between;background:rgba(246,244,239,.9);border-bottom:1px solid rgba(25,35,31,.1);backdrop-filter:blur(18px)}
 .brand{display:flex;align-items:center;gap:11px}
 .brand div{display:grid}
